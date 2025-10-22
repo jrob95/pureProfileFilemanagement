@@ -1,3 +1,4 @@
+# source the label function from R/functions.R
 source(
   "https://raw.githubusercontent.com/jrob95/pureProfileFilemanagement/refs/heads/master/R/functions.R"
 )
@@ -6,6 +7,7 @@ source(
 # data - can also import from excel or whatever.
 data <- read_csv("your.csv")
 
+# dictionaries - get levels for factors
 dict_lvl <- read_xlsx(
   "your_datadictionary.xlsx",
   sheet = "Variable Values",
@@ -16,6 +18,7 @@ dict_lvl <- read_xlsx(
   fill(field) %>%
   glimpse()
 
+# dictionaries labels for variable names
 dict_nm <- read_xlsx(
   "your_datadictionary.xlsx",
   sheet = "Variable Information",
@@ -26,9 +29,10 @@ dict_nm <- read_xlsx(
 data_lbl <- label_factors_with_variable_names(data, dict_lvl, dict_nm)
 
 
-# need as long for mlogit
-# can join on relevent demo/ person data adhoc.
+# need as long for mlogit, logitR, clogit
+# can join on relevant demo/ person data adhoc.
 # dce data nd - no demographics
+# you will likely have a slightly different naming scheme than I did so you will need to modify this script for that.
 dce_nd <- data_lbl %>%
   select(
     RECORD,
@@ -66,6 +70,8 @@ dce_nd <- data_lbl %>%
   rename_all(~ stringr::str_replace(., "^HQ", "")) %>%
   rename_with(tolower)
 
+
+# I did this to convert choice to numeric and add a field to identify each choice task (that also includes peron id. no idea why I called it str though.
 dce_not_dummy <- dce_nd %>%
   mutate(
     choice = as.numeric(choice),
@@ -95,15 +101,15 @@ find_repeat <- dce_not_dummy %>%
   group_by(id) %>%
   mutate(same = n_distinct(choice) == 1)
 
-
+# example using clogit from survival
 cLogitMnl <- survival::clogit(
   choice ~ alt + youratts + strata(str),
   data = dce_cleaned
 )
 
-
+# using logitr from the logitr package.
 # use randPars for MIXL see ?logitr
-LogitrMnl <- logitr(
+LogitrMnl <- logitr::logitr(
   data = dce_cleaned,
   outcome = "choice",
   obsID = "str",
@@ -111,3 +117,5 @@ LogitrMnl <- logitr(
   panelID = "id",
   numCores = parallel::detectCores() - 1
 )
+
+# apollo is a little bit more involved and doesn't really use any of R's native features like factor variable management.
