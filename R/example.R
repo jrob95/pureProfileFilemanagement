@@ -34,24 +34,28 @@ data_lbl <- label_factors_with_variable_names(data, dict_lvl, dict_nm)
 # dce data nd - no demographics
 # you will likely have a slightly different naming scheme than I did so you will need to modify this script for that.
 dce_nd <- data_lbl %>%
+  # discard
   select(
     RECORD,
     starts_with("DCE_"),
     starts_with("HQ"),
     -starts_with("HQCHOICE_SITUATION_")
   ) %>%
+  # using regex column matches (in the format HQ_<attr>_<task>_<alt>) extract attribute name, task num, alt num in to
   pivot_longer(
-    cols = matches("HQ....._[1-9]|1[012]_."),
-    names_sep = "_",
+    cols = matches("^HQ_[A-Za-z]+_\\d+_\\d+$"),
     names_to = c("attr", "task", "alt"),
+    names_pattern = "^HQ_([^_]+)_([^_]+)_([^_]+)$",
     values_to = "level"
   ) %>%
+  # pull out choices from
   pivot_longer(
     cols = starts_with("DCE_"),
     names_prefix = "DCE_",
     names_to = "dce_task",
     values_to = "choice"
   ) %>%
+  # keep only records where the choice made matches the choice task
   filter(task == dce_task) %>%
   select(-c(starts_with("HQSET_"), "dce_task")) %>%
   pivot_wider(
@@ -70,6 +74,13 @@ dce_nd <- data_lbl %>%
   rename_all(~ stringr::str_replace(., "^HQ", "")) %>%
   rename_with(tolower)
 
+# if you have complicated variable labels you might want to simplify them with
+# mutate(<attr> = case_match(
+#   <attr>,
+#   "<oldlevelone>" ~ "<new simple level one>",
+#   "<oldleveltwo>" ~ "<new simple level two>",
+#   "<oldlevelthree>" ~ "<new simple level three>"))
+# you can get the levels of <attr> from levels(dataframe$<attr>)
 
 # I did this to convert choice to numeric and add a field to identify each choice task (that also includes peron id. no idea why I called it str though.
 dce_not_dummy <- dce_nd %>%
